@@ -9,6 +9,7 @@ import SeatSelection from "./pages/SeatSelection";
 import PassengerDetails from "./pages/PassengerDetails";
 import BookingConfirmation from "./pages/BookingConfirmation";
 import MyBookings from "./pages/MyBookings";
+import ConductorVerify from "./pages/ConductorVerify";
 import "./App.css";
 
 function App() {
@@ -20,7 +21,11 @@ function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
 
-          {/* Protected Routes for authenticated users */}
+          {/* Conductor Verification Portal (Accessible directly for bus staff) */}
+          <Route path="/conductor/verify" element={<ConductorVerify />} />
+          <Route path="/conductor" element={<Navigate to="/conductor/verify" replace />} />
+
+          {/* Protected Routes for authenticated passengers */}
           <Route element={<ProtectedRoute />}>
             <Route path="/home" element={<Home />} />
             <Route path="/search" element={<SearchResults />} />

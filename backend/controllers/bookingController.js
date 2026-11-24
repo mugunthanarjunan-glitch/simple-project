@@ -1,8 +1,16 @@
 const Booking = require("../models/Booking");
 const SeatAvailability = require("../models/SeatAvailability");
+const Ticket = require("../models/Ticket");
+const QRCode = require("../utils/qrcode");
 const buses = require("../data/buses");
 
 const ALL_VALID_SEATS = Array.from({ length: 40 }, (_, i) => `S${i + 1}`);
+
+const generateTicketId = (index) => {
+  const timestampPart = Date.now().toString(36).toUpperCase();
+  const randomPart = Math.random().toString(36).substring(2, 6).toUpperCase();
+  return `RBUS-TKT-${timestampPart}-${randomPart}-${index + 1}`;
+};
 
 /**
  * Generate a clean, unique RedBus booking identifier
@@ -238,6 +246,7 @@ exports.createBooking = async (req, res) => {
     // 8. Create Booking document with rollback on failure
     const bookingId = generateBookingId();
     let booking;
+    let createdTickets = [];
 
     try {
       booking = await Booking.create({
@@ -257,6 +266,41 @@ exports.createBooking = async (req, res) => {
         totalAmount,
         status: "confirmed"
       });
+
+      // Generate individual Ticket records for each passenger
+      for (let i = 0; i < validatedPassengers.length; i++) {
+        const p = validatedPassengers[i];
+        const ticketId = generateTicketId(i);
+
+        const ticket = await Ticket.create({
+          ticketId,
+          bookingId: booking._id,
+          bookingCode: booking.bookingId,
+          userId,
+          busId: bus.id,
+          passengerName: p.name,
+          passengerAge: p.age,
+          passengerGender: p.gender,
+          seatNumber: p.seatNumber,
+          from: bus.from,
+          to: bus.to,
+          journeyDate: cleanJourneyDate,
+          departureTime: bus.departureTime || "21:00",
+          arrivalTime: bus.arrivalTime || "05:00",
+          ticketPrice,
+          status: "confirmed",
+          verificationStatus: "not_checked"
+        });
+
+        // Generate QR code with minimal payload { ticketId }
+        const qrPayload = JSON.stringify({ ticketId: ticket.ticketId });
+        const qrCodeDataUrl = await QRCode.toDataURL(qrPayload);
+
+        createdTickets.push({
+          ...ticket.toObject(),
+          qrCode: qrCodeDataUrl
+        });
+      }
     } catch (bookingError) {
       // Rollback the reserved seats if booking creation encounters an error
       console.error("Booking creation failed, rolling back reserved seats:", bookingError);
@@ -264,13 +308,18 @@ exports.createBooking = async (req, res) => {
         { busId: bus.id, journeyDate: cleanJourneyDate },
         { $pull: { bookedSeats: { $in: selectedSeats } } }
       );
+      if (booking?._id) {
+        await Ticket.deleteMany({ bookingId: booking._id });
+        await Booking.deleteOne({ _id: booking._id });
+      }
       throw bookingError;
     }
 
     return res.status(201).json({
       success: true,
       message: "Bus ticket booked successfully!",
-      booking
+      booking,
+      tickets: createdTickets
     });
   } catch (error) {
     console.error("Error creating booking:", error);
@@ -333,9 +382,23 @@ exports.getBookingDetails = async (req, res) => {
       });
     }
 
+    // Fetch associated tickets with QR codes
+    const tickets = await Ticket.find({ bookingId: booking._id });
+    const ticketsWithQR = await Promise.all(
+      tickets.map(async (t) => {
+        const qrPayload = JSON.stringify({ ticketId: t.ticketId });
+        const qrCode = await QRCode.toDataURL(qrPayload);
+        return {
+          ...t.toObject(),
+          qrCode
+        };
+      })
+    );
+
     return res.status(200).json({
       success: true,
-      booking
+      booking,
+      tickets: ticketsWithQR
     });
   } catch (error) {
     console.error("Error retrieving booking details:", error);
@@ -387,9 +450,14 @@ exports.cancelBooking = async (req, res) => {
       { $pull: { bookedSeats: { $in: booking.selectedSeats } } }
     );
 
-    // 2. Update booking status
+    // 2. Update booking status and all associated tickets
     booking.status = "cancelled";
     await booking.save();
+
+    await Ticket.updateMany(
+      { bookingId: booking._id },
+      { status: "cancelled" }
+    );
 
     return res.status(200).json({
       success: true,

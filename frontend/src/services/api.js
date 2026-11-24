@@ -7,10 +7,6 @@ const api = axios.create({
 
 /**
  * Searches for buses matching source, destination, and journey date.
- * @param {string} from - Source city
- * @param {string} to - Destination city
- * @param {string} date - Journey date (YYYY-MM-DD)
- * @returns {Promise<{success: boolean, message: string, count: number, buses: Array}>}
  */
 export const searchBuses = async (from, to, date) => {
   const response = await api.get("/buses/search", {
@@ -21,9 +17,6 @@ export const searchBuses = async (from, to, date) => {
 
 /**
  * Retrieves seat availability for a specific bus and journey date.
- * @param {number|string} busId - Bus ID
- * @param {string} date - Journey date (YYYY-MM-DD)
- * @returns {Promise<{success: boolean, busId: number, journeyDate: string, totalSeats: number, bookedSeats: string[], availableSeats: number}>}
  */
 export const getSeatAvailability = async (busId, date) => {
   const response = await api.get(`/seats/${busId}`, {
@@ -34,10 +27,6 @@ export const getSeatAvailability = async (busId, date) => {
 
 /**
  * Validates selected seat numbers before continuing to passenger details.
- * @param {number|string} busId - Bus ID
- * @param {string} journeyDate - Journey date (YYYY-MM-DD)
- * @param {string[]} selectedSeats - Array of selected seat numbers (e.g. ["S1", "S2"])
- * @returns {Promise<{success: boolean, message: string, busId: number, journeyDate: string, selectedSeats: string[], pricePerSeat: number, totalAmount: number}>}
  */
 export const validateSelectedSeats = async (busId, journeyDate, selectedSeats) => {
   const response = await api.post("/seats/validate", {
@@ -50,8 +39,6 @@ export const validateSelectedSeats = async (busId, journeyDate, selectedSeats) =
 
 /**
  * Creates a confirmed bus ticket booking.
- * @param {Object} bookingData - Booking payload { busId, journeyDate, selectedSeats, passengers, contactEmail, contactMobile }
- * @returns {Promise<{success: boolean, message: string, booking: Object}>}
  */
 export const createBooking = async (bookingData) => {
   const response = await api.post("/bookings", bookingData);
@@ -60,7 +47,6 @@ export const createBooking = async (bookingData) => {
 
 /**
  * Fetches all confirmed and cancelled bookings of the currently logged-in user.
- * @returns {Promise<{success: boolean, count: number, bookings: Array}>}
  */
 export const getMyBookings = async () => {
   const response = await api.get("/bookings/my-bookings");
@@ -69,8 +55,6 @@ export const getMyBookings = async () => {
 
 /**
  * Fetches details of a specific booking by bookingId.
- * @param {string} bookingId - Booking ID (e.g., "RB-XXXXXX")
- * @returns {Promise<{success: boolean, booking: Object}>}
  */
 export const getBookingDetails = async (bookingId) => {
   const response = await api.get(`/bookings/${bookingId}`);
@@ -79,12 +63,48 @@ export const getBookingDetails = async (bookingId) => {
 
 /**
  * Cancels a confirmed booking and releases reserved seats.
- * @param {string} bookingId - Booking ID (e.g., "RB-XXXXXX")
- * @returns {Promise<{success: boolean, message: string, booking: Object}>}
  */
 export const cancelBooking = async (bookingId) => {
   const response = await api.patch(`/bookings/${bookingId}/cancel`);
   return response.data;
 };
 
+/**
+ * Verifies a passenger's ticket for conductor boarding check.
+ * @param {string} ticketId - Unique Ticket ID (e.g. RBUS-TKT-XXXX)
+ * @returns {Promise<{success: boolean, verdict: string, message: string, ticket: Object}>}
+ */
+export const verifyTicket = async (ticketId) => {
+  const response = await api.post("/tickets/verify", { ticketId });
+  return response.data;
+};
+
+/**
+ * Conductor checks in a verified passenger.
+ * @param {string} ticketId - Unique Ticket ID
+ * @returns {Promise<{success: boolean, verdict: string, message: string, ticket: Object}>}
+ */
+export const checkInPassenger = async (ticketId) => {
+  const response = await api.post("/tickets/check-in", { ticketId });
+  return response.data;
+};
+
+/**
+ * Fetches individual passenger tickets with QR codes for a booking.
+ * @param {string} bookingId - Booking ID
+ * @returns {Promise<{success: boolean, count: number, tickets: Array}>}
+ */
+export const getTicketsByBooking = async (bookingId) => {
+  const response = await api.get(`/tickets/booking/${bookingId}`);
+  return response.data;
+};
+
 export default api;
+
+/**
+ * Fetches recent tickets for conductor quick-test selection.
+ */
+export const getRecentTickets = async () => {
+  const response = await api.get("/tickets/recent");
+  return response.data;
+};
