@@ -48,4 +48,43 @@ export const validateSelectedSeats = async (busId, journeyDate, selectedSeats) =
   return response.data;
 };
 
+/**
+ * Creates a confirmed bus ticket booking.
+ * @param {Object} bookingData - Booking payload { busId, journeyDate, selectedSeats, passengers, contactEmail, contactMobile }
+ * @returns {Promise<{success: boolean, message: string, booking: Object}>}
+ */
+export const createBooking = async (bookingData) => {
+  const response = await api.post("/bookings", bookingData);
+  return response.data;
+};
+
+/**
+ * Fetches all confirmed and cancelled bookings of the currently logged-in user.
+ * @returns {Promise<{success: boolean, count: number, bookings: Array}>}
+ */
+export const getMyBookings = async () => {
+  const response = await api.get("/bookings/my-bookings");
+  return response.data;
+};
+
+/**
+ * Fetches details of a specific booking by bookingId.
+ * @param {string} bookingId - Booking ID (e.g., "RB-XXXXXX")
+ * @returns {Promise<{success: boolean, booking: Object}>}
+ */
+export const getBookingDetails = async (bookingId) => {
+  const response = await api.get(`/bookings/${bookingId}`);
+  return response.data;
+};
+
+/**
+ * Cancels a confirmed booking and releases reserved seats.
+ * @param {string} bookingId - Booking ID (e.g., "RB-XXXXXX")
+ * @returns {Promise<{success: boolean, message: string, booking: Object}>}
+ */
+export const cancelBooking = async (bookingId) => {
+  const response = await api.patch(`/bookings/${bookingId}/cancel`);
+  return response.data;
+};
+
 export default api;
