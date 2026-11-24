@@ -1,4 +1,5 @@
 const buses = require("../data/buses");
+const SeatAvailability = require("../models/SeatAvailability");
 
 /**
  * Controller to search buses based on from, to, and date query parameters.
@@ -69,12 +70,26 @@ exports.searchBuses = async (req, res) => {
         bus.to.toLowerCase() === trimmedTo.toLowerCase()
     );
 
-    // 5. Initial seat availability: set availableSeats to totalSeats
-    // (Actual MongoDB seat booking integration will be handled in the seat selection module)
-    const busesWithSeats = matchingBuses.map((bus) => ({
-      ...bus,
-      availableSeats: bus.totalSeats
-    }));
+    // 5. Query MongoDB for booked seats on this journey date
+    const busIds = matchingBuses.map((bus) => bus.id);
+    const availabilityRecords = await SeatAvailability.find({
+      busId: { $in: busIds },
+      journeyDate: trimmedDate
+    });
+
+    const availabilityMap = new Map();
+    availabilityRecords.forEach((record) => {
+      availabilityMap.set(record.busId, record.bookedSeats.length);
+    });
+
+    const busesWithSeats = matchingBuses.map((bus) => {
+      const bookedCount = availabilityMap.get(bus.id) || 0;
+      const availableSeats = Math.max(0, (bus.totalSeats || 40) - bookedCount);
+      return {
+        ...bus,
+        availableSeats
+      };
+    });
 
     return res.status(200).json({
       success: true,

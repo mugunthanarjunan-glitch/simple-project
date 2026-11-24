@@ -5,7 +5,8 @@ import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import Home from "./pages/Home";
 import SearchResults from "./pages/SearchResults";
-import SeatSelectionPlaceholder from "./pages/SeatSelectionPlaceholder";
+import SeatSelection from "./pages/SeatSelection";
+import PassengerDetailsPlaceholder from "./pages/PassengerDetailsPlaceholder";
 import MyBookings from "./pages/MyBookings";
 import "./App.css";
 
@@ -23,7 +24,8 @@ function App() {
             <Route path="/home" element={<Home />} />
             <Route path="/search" element={<SearchResults />} />
             <Route path="/search-results" element={<SearchResults />} />
-            <Route path="/seats/:busId" element={<SeatSelectionPlaceholder />} />
+            <Route path="/seats/:busId" element={<SeatSelection />} />
+            <Route path="/passenger-details" element={<PassengerDetailsPlaceholder />} />
             <Route path="/my-bookings" element={<MyBookings />} />
           </Route>
 
